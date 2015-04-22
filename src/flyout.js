@@ -94,7 +94,7 @@ EnzeyNet.FlyoutServices = function() {
 		this.flyoutParent.setAttribute('flyout-id', this.getAttribute('id'));
 
 		// Process element attributes
-		this.attributeChangedCallback('flyout-display',  null, this.getAttribute('flyout-display'));
+		this.attributeChangedCallback('flyout-on',  null, this.getAttribute('flyout-on'));
 	};
 
 	flyoutProto.detachedCallback = function() {
@@ -104,11 +104,11 @@ EnzeyNet.FlyoutServices = function() {
 		console.log(this.flyoutParent);
 
 		// Process element attributes
-		this.attributeChangedCallback('flyout-display',  this.getAttribute('flyout-display'), null);
+		this.attributeChangedCallback('flyout-on',  this.getAttribute('flyout-on'), null);
 	};
 
 	flyoutProto.attributeChangedCallback = function (name, oldValue, newValue) {
-		if (name === 'flyout-display') {
+		if (name === 'flyout-on') {
 			this.bindFlyoutAction(newValue, oldValue);
 		}
 	};
