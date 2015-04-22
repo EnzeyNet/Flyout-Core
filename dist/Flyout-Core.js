@@ -1,4 +1,4 @@
-if (!EnzeyNet) {EnzeyNet = {};}
+if (!window.EnzeyNet) {window.EnzeyNet = {};}
 
 EnzeyNet.applyFunctions = function(someElem, someService) {
 	for(var f in someService.prototype) {
