@@ -7,6 +7,7 @@ module.exports = function(config) {
 		frameworks: ["jasmine"],
 		basePath: '.',
 		files: [
+			'lib*/angular/*.js',
 			'lib*/**/*.js',
 			'src/*.js',
 			'src_test/*.js'
