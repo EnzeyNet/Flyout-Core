@@ -1,11 +1,11 @@
 if (!window.EnzeyNet) {window.EnzeyNet = {};}
-EnzeyNet.FlyoutComponent = require('./flyout-prototype');
+EnzeyNet.FlyoutComponent = require('./flyout-wrapper');
 
 try {
 	EnzeyNet.applyFunctions = function(someElem, someService) {
-		for(var f in someService.prototype) {
-			if ('function' === typeof someService.prototype[f]) {
-				someElem[f] = someService.prototype[f];
+		for(var f in someService) {
+			if ('function' === typeof someService[f]) {
+				someElem[f] = someService[f];
 			}
 		};
 	};

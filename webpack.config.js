@@ -10,40 +10,15 @@ module.exports = {
   // Entry accepts a path or an object of entries. We'll be using the
   // latter form given it's convenient with more complex configurations.
   entry: {
-    app: ['babel-polyfill', PATHS.src + '/flyout.js']
+    flyout: [PATHS.src + '/flyout.js'],
+    "Flyout-WebComponent.allDeps": [PATHS.src + '/Flyout-WebComponent.js']
   },
   output: {
     path: PATHS.dist,
     filename: '[name].js'
   },
-  plugins: [
-	new webpack.optimize.UglifyJsPlugin({
-      compress: { warnings: false }
-    })
-  ],
   module: {
 	loaders: [
-		{
-			loader: 'babel', // 'babel-loader' is also a legal name to reference
-			test: /\.js$/,
-			exclude: /node_modules/,
-			include: [
-			  PATHS.src
-			],
-			cacheDirectory: true,
-			query: {
-				presets: [
-					"es2015",
-					"stage-0"
-				],
-				plugins: [
-					["transform-async-to-module-method", {
-						"module": "co",
-						"method": "wrap"
-					}]
-				]
-			}
-		}
 	]
   }
 };

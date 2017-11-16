@@ -1,76 +1,67 @@
-var Helpers = require('./helpers');
+var Helpers = require('./helpers/helpers');
+var ConvexHull = require('./helpers/convexHull');
+var EventManager = require('./event-manager');
 
-var EventsBinder  = function(flyout) {
+var EventsBinder = function(flyout) {
+	this.watchedElements = [];
+	this._flyout = flyout;
 
-	var unbound = {};
-
-	var processMouseMove = function(flyout, event) {
-		var mX = event.clientX;
-		var mY = event.clientY;
-		var flyoutAnchorElemPos = Helpers.getBoxData(flyout.flyoutAlignedToElem);
-
-		var aL = flyoutAnchorElemPos.left;
-		var aR = aL + flyoutAnchorElemPos.width;
-		var aT = flyoutAnchorElemPos.top;
-		var aB = aT + flyoutAnchorElemPos.height;
-
-		var isOutsideAncher = false;
-		if (
-			(mX < aL || mX > aR || mY < aT || mY > aB)
-		) {
-			isOutsideAncher = true;
-		}
-
-		var isOutsideContainer = false;
-		var flyoutContainerPos = Helpers.getBoxData(flyout.flyoutContainer);
-
-		var cL = flyoutContainerPos.left;
-		var cR = cL + flyoutContainerPos.width;
-		var cT = flyoutContainerPos.top;
-		var cB = cT + flyoutContainerPos.height;
-
-		if (mX < cL || mX > cR || mY < cT || mY > cB) {
-			isOutsideContainer = true
-		}
-
-		if (isOutsideAncher && isOutsideContainer) {
-			flyout.unbindEvents();
-			flyout.close();
-			flyout.flyoutElem.parentElement.addEventListener('mouseover', unbound.watchMouseOver);
-
-			return true;
+	var that = this;
+	for(var f in EventsBinder.prototype) {
+		if ('function' === typeof EventsBinder.prototype[f]) {
+			that[f] = EventsBinder.prototype[f].bind(that);
 		}
 	};
+};
 
-	unbound.watchMouseOver = function(event) {
-		flyout.unbindEvents();
-		flyout.displayFlyout();
-	};
-	this.watchMouseOver = unbound.watchMouseOver.bind(flyout)
+EventsBinder.prototype.watchMouseOver = function(event) {
+	var flyout = this._flyout;
 
-	unbound.watchMouseMove = function(event) {
-		var flyoutChild = flyout.getFlyoutChild();
-		if (flyoutChild) {
-			unbound.watchMouseMove.call(flyoutChild, event);
+	flyout.unbindEvents();
+	flyout.displayFlyout();
+};
+
+EventsBinder.prototype.clickEvent = function(event) {
+	this._flyout.displayFlyout();
+};
+
+EventsBinder.prototype.processClickEvent = function(event) {
+	if (event.type !== 'click') return;
+
+	var flyout = this._flyout;
+
+	if (!ConvexHull.isInsideElement(flyout.flyoutContainer, event) &&
+		!ConvexHull.isInsideElement(flyout.flyoutElem.parentElement, event))
+	{
+		flyout.close();
+	}
+};
+
+EventsBinder.prototype.registerScrollEvent = function(elem) {
+	var flyout = this._flyout;
+
+	var wrappedScrollEvent = function() {
+		if (flyout.isActive()) {
+			flyout.displayFlyout();
+		} else {
+			this.removeScrollEvents();
+			elem.removeEventListener('scroll', wrappedScrollEvent);
 		}
-
-		if (flyout.isActive() && (!flyoutChild || !flyoutChild.isActive())) {
-			processMouseMove(flyout, event);
-		}
 	};
-	this.watchMouseMove = unbound.watchMouseMove.bind(flyout)
+	this.watchedElements.push({
+		elem: elem,
+		fn: wrappedScrollEvent
+	});
+	elem.addEventListener('scroll', wrappedScrollEvent);
+};
 
-	unbound.clickEvent = function(event) {
-		EnzeyNet.Services.registerClickAwayAction(
-			flyout.close,
-			flyout.flyoutContainer,
-			flyout.parentElement
-		);
-
-		flyout.displayFlyout();
-	};
-	this.clickEvent = unbound.clickEvent.bind(flyout)
-
+EventsBinder.prototype.removeScrollEvents = function() {
+	if (this.watchedElements) {
+		this.watchedElements.forEach(function(group) {
+			group.elem.removeEventListener('scroll', group.fn);
+		});
+	}
+	this.watchedElements.length = 0;
 };
 
 module.exports = EventsBinder;
@@ -87,3 +78,22 @@ module.exports = function(bindable) {
 
 module.exports = events;
 */
+
+
+
+
+EventsBinder.prototype.processMouseMove = function(event) {
+	if (event.type !== 'hover') return;
+
+	var flyout = this._flyout;
+
+	var hull = ConvexHull.buildHull(flyout.flyoutElem.parentElement, flyout.flyoutContainer);
+	if (!hull.isInsideElements(event)) {
+		flyout.close();
+		flyout.flyoutElem.parentElement.addEventListener('mouseover', this.watchMouseOver);
+
+		return true;
+	}
+};
+
+

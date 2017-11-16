@@ -1,401 +1,292 @@
 var EventsBinder = require('./events');
-var Helpers = require('./helpers');
 var EventManager = require('./event-manager');
+var Positioner = require('./position');
 
-class Flyout {
-	constructor (flyoutElem) {
-		// expect Array.prototype.forEach
-		// expect Array.prototype.map
+var getFlyoutPredicate = function(flyoutElem) {
+	var alignMyAttr = flyoutElem.getAttribute('align-my');
+	var alignToAttr = flyoutElem.getAttribute('align-to');
 
-		if (!flyoutElem || !flyoutElem.prototype instanceof HTMLElement) {
-			throw 'flyoutElem must be an HTMLElement'
-		}
+	return {
+		flyout: alignMyAttr,
+		anchor: alignToAttr,
+	}
+}
 
-		this.flyoutElem = flyoutElem;
-		this.watchedElements = [];
-		this.EVENTS = new EventsBinder(this);
+var Flyout = function(flyoutElem) {
+	// expect Array.prototype.forEach
+	// expect Array.prototype.map
 
-		// Set id on element
-		var flyoutId = flyoutElem.getAttribute('id');
-		if (!flyoutId) {
-			flyoutId = 'f' + Date.now();
-			flyoutElem.setAttribute('id', flyoutId);
-		}
-
-		// Store inner HTML
-		this.flyoutTempalte = flyoutElem.innerHTML;
-		flyoutElem.innerHTML = '';
+	if (!flyoutElem || !flyoutElem.prototype instanceof HTMLElement) {
+		throw 'flyoutElem must be an HTMLElement'
 	}
 
-	registerScrollEvent (elem) {
-		var flyoutElem = this.flyoutElem;
-		var wrappedScrollEvent = function() {
-			if (this.isActive()) {
-				this.positionFlyout(flyoutElem.flyoutAlignedToElem);
-			} else {
-				elem.removeEventListener('scroll', wrappedScrollEvent);
-			}
+	this.flyoutElem = flyoutElem;
+	this.EVENTS = new EventsBinder(this);
+
+	// Set id on element
+	var flyoutId = flyoutElem.getAttribute('id');
+	if (!flyoutId) {
+		flyoutId = 'f' + Date.now();
+		flyoutElem.setAttribute('id', flyoutId);
+	}
+
+	// Store inner HTML
+	this.flyoutTempalte = flyoutElem.innerHTML;
+	flyoutElem.innerHTML = '';
+
+	this.displayFlyout = this.displayFlyout.bind(this);
+	this.unbindEvents = this.unbindEvents.bind(this);
+	this.close = this.close.bind(this);
+	this.clearTimers = this.clearTimers.bind(this);
+	this.isActive = this.isActive.bind(this);
+	this.EVENTS = new EventsBinder(this);
+
+	var flyoutElem = this;
+	(function() {
+		var flyoutParent = null;
+		flyoutElem.setFlyoutParent = function(elem) {
+			flyoutParent = elem;
 		};
-		this.watchedElements.push({
-			elem: elem,
-			fn: wrappedScrollEvent
-		});
-		elem.addEventListener('scroll', wrappedScrollEvent);
-	}
-
-	registerScrollEvent (elem) {
-		var flyoutElem = this.flyoutElem;
-		var wrappedScrollEvent = function() {
-			if (this.isActive()) {
-				this.positionFlyout(flyoutElem.flyoutAlignedToElem);
-			} else {
-				elem.removeEventListener('scroll', wrappedScrollEvent);
-			}
+		flyoutElem.getFlyoutParent = function(elem) {
+			return flyoutParent;
 		};
-		this.watchedElements.push({
-			elem: elem,
-			fn: wrappedScrollEvent
-		});
-		elem.addEventListener('scroll', wrappedScrollEvent);
-	}
-
-	registerScrollEvent (elem) {
-		var flyoutElem = this.flyoutElem;
-		var wrappedScrollEvent = function() {
-			if (this.isActive()) {
-				this.positionFlyout(flyoutElem.flyoutAlignedToElem);
-			} else {
-				elem.removeEventListener('scroll', wrappedScrollEvent);
-			}
+	})();
+	(function() {
+		var flyoutChild = null;
+		flyoutElem.setFlyoutChild = function(elem) {
+			flyoutChild = elem;
 		};
-		this.watchedElements.push({
-			elem: elem,
-			fn: wrappedScrollEvent
-		});
-		elem.addEventListener('scroll', wrappedScrollEvent);
-	}
-
-	registerScrollEvent (elem) {
-		var flyoutElem = this.flyoutElem;
-		var wrappedScrollEvent = function() {
-			if (this.isActive()) {
-				this.positionFlyout(flyoutElem.flyoutAlignedToElem);
-			} else {
-				elem.removeEventListener('scroll', wrappedScrollEvent);
-			}
+		flyoutElem.getFlyoutChild = function(elem) {
+			return flyoutChild;
 		};
-		this.watchedElements.push({
-			elem: elem,
-			fn: wrappedScrollEvent
-		});
-		elem.addEventListener('scroll', wrappedScrollEvent);
-	}
-	
-	removeScrollEvents () {
-		var flyoutElem = this.flyoutElem;
-		if (this.watchedElements) {
-			this.watchedElements.forEach(function(group) {
-				group.elem.removeEventListener('scroll', group.fn);
+	})();
+};
+var flyoutProto = Flyout.prototype;
+
+flyoutProto.processEvent = function(event) {
+	this.close();
+	return false;
+};
+
+flyoutProto.getPositioningKeys = function() {
+	return {
+		attributes: [
+		],
+		classes: [
+			'flyout-against'
+		]
+	};
+};
+
+flyoutProto.findParentToPositionAgainst = function() {
+	var flyoutElem = this.flyoutElem;
+	var positionAgainstElem;
+	if (true) {
+		// Get things to check for on parent.
+		var positioningKeys = this.getPositioningKeys();
+		if (positioningKeys.attributes) {
+			var clone = positioningKeys.attributes.slice(0);
+			clone.map(function(attr) {
+				return 'data-' + attr;
+			}).forEach(function(attr) {
+				positioningKeys.attributes.push(attr);
 			});
 		}
-		this.watchedElements.length = 0;
-	}
 
-	getPositioningKeys () {
-		return {
-			attributes: [
-			],
-			classes: [
-				'flyout-against'
-			]
-		};
-	}
-
-	findParentToPositionAgainst () {
-		var flyoutElem = this.flyoutElem;
-		var positionAgainstElem;
-		if (true) {
-			// Get things to check for on parent.
-			var positioningKeys = this.getPositioningKeys();
-			if (positioningKeys.attributes) {
-				var clone = positioningKeys.attributes.slice(0);
-				clone.map(function(attr) {
-					return 'data-' + attr;
-				}).forEach(function(attr) {
-					positioningKeys.attributes.push(attr);
+		// Transverse DOM looking for element to position against.
+		var searchParentElem = flyoutElem.parentElement;
+		while (searchParentElem && !positionAgainstElem) {
+			if (positioningKeys.classes instanceof Array) {
+				positioningKeys.classes.forEach(function(someClass) {
+					if (!positionAgainstElem) {
+						if (searchParentElem.classList.contains(someClass)) {
+							positionAgainstElem = searchParentElem;
+						}
+					}
+				});
+			}
+			if (positioningKeys.attributes instanceof Array) {
+				positioningKeys.attributes.forEach(function(someAttribute) {
+					if (!positionAgainstElem) {
+						if (searchParentElem.attributes[someAttribute]) {
+							positionAgainstElem = searchParentElem;
+						}
+					}
 				});
 			}
 
-			// Transverse DOM looking for element to position against.
-			var searchParentElem = flyoutElem.parentElement;
-			while (searchParentElem && !positionAgainstElem) {
-				if (positioningKeys.classes instanceof Array) {
-					positioningKeys.classes.forEach(function(someClass) {
-						if (!positionAgainstElem) {
-							if (searchParentElem.classList.contains(someClass)) {
-								positionAgainstElem = searchParentElem;
-							}
-						}
-					});
-				}
-				if (positioningKeys.attributes instanceof Array) {
-					positioningKeys.attributes.forEach(function(someAttribute) {
-						if (!positionAgainstElem) {
-							if (searchParentElem.attributes[someAttribute]) {
-								positionAgainstElem = searchParentElem;
-							}
-						}
-					});
-				}
+			searchParentElem = searchParentElem.parentElement;
+		}
 
-				searchParentElem = searchParentElem.parentElement;
+	}
+	if (!positionAgainstElem) {
+		positionAgainstElem = flyoutElem.parentElement;
+	}
+
+	return positionAgainstElem;
+};
+
+flyoutProto.attachedCallback = function() {
+	// Process element attributes
+	this.attributeChangedCallback('flyout-on',  null, this.flyoutElem.getAttribute('flyout-on'));
+	//EventManager.registerFlyout(this);
+};
+
+flyoutProto.detachedCallback = function() {
+	// Process element attributes
+	this.attributeChangedCallback('flyout-on',  this.flyoutElem.getAttribute('flyout-on'), null);
+};
+
+flyoutProto.attributeChangedCallback = function (name, oldValue, newValue) {
+	if (name === 'flyout-on') {
+		if (newValue) {
+			this.bindFlyoutAction(newValue, oldValue);
+		}
+	}
+};
+
+flyoutProto.bindFlyoutAction = function(newValue, oldValue) {
+	var flyout = this;
+
+	var eventProcessors = [];
+	this.unbindEvents();
+	if (typeof newValue === 'string') {
+		newValue = newValue.split(' ');
+		console.log(newValue)
+		if (newValue.indexOf('click') >= 0) {
+			eventProcessors.push(flyout.EVENTS.processClickEvent);
+			flyout.flyoutElem.parentElement.addEventListener('click', flyout.EVENTS.clickEvent);
+		} else if (newValue.indexOf('hover') >= 0) {
+			eventProcessors.push(flyout.EVENTS.processMouseMove);
+			flyout.flyoutElem.parentElement.addEventListener('mouseover', flyout.EVENTS.watchMouseOver);
+		}
+	}
+	flyout.processEvent = function(event) {
+		eventProcessors.forEach(function(processor) {
+			if (flyout.isActive()) {
+				processor(event);
+			}
+		});
+	}
+};
+
+flyoutProto.unbindEvents = function() {
+	var flyoutElem = this.flyoutElem;
+
+	flyoutElem.parentElement.removeEventListener('click', this.EVENTS.clickEvent);
+	flyoutElem.parentElement.removeEventListener('mouseover', this.EVENTS.watchMouseOver);
+};
+
+flyoutProto.isActive = function() {
+	return this.isActiveBool;
+};
+
+flyoutProto.clearTimers = function() {
+	if (this.pendingRenderActions) {
+		window.cancelAnimationFrame(this.pendingRenderActions.animationFrame);
+		window.clearTimeout(this.pendingRenderActions.timeout);
+	}
+	this.pendingRenderActions = {};
+};
+
+flyoutProto.close = function() {
+	var flyout = this;
+	flyout.isActiveBool = false;
+
+	flyout.flyoutContainer.addEventListener('transitionend', function() {
+		//flyout.unlinkFlyouts();
+		if (!flyout.isActive()) {
+			flyout.clearTimers();
+			if (flyout.changeObserver) {
+				flyout.changeObserver.disconnect();
+			}
+			flyout.EVENTS.removeScrollEvents();
+			flyout.flyoutContainer.parentElement.removeChild(flyout.flyoutContainer);
+			flyout.flyoutContainer = null;
+			flyout.flyoutAlignedToElem = null;
+		}
+	});
+
+	flyout.pendingRenderActions.animationFrame = window.requestAnimationFrame(function() {
+		flyout.flyoutContainer.classList.add('leave');
+
+		flyout.pendingRenderActions.animationFrame = window.requestAnimationFrame(function() {
+			flyout.flyoutContainer.classList.add('active');
+		});
+	});
+
+};
+
+flyoutProto.displayFlyout = function() {
+	var flyout = this;
+	var flyoutElem = this.flyoutElem;
+
+	this.clearTimers();
+
+	if (flyout.isActive()) {
+		flyout.pendingRenderActions.animationFrame = Positioner.position(
+			flyout.flyoutContainer,
+			flyout.flyoutAlignedToElem,
+			getFlyoutPredicate(flyout.flyoutElem)
+		);
+	} else {
+		//this.linkFlyouts();
+		flyout.flyoutAlignedToElem = flyout.findParentToPositionAgainst();
+
+		if (!flyout.flyoutContainer) {
+			flyout.flyoutContainer = document.createElement('div');
+			
+			flyout.flyoutContainer.style.position = 'fixed';
+			flyout.flyoutContainer.style.top = '0';
+			elemLeft = '0';
+			flyout.flyoutContainer.style.visibility = 'hidden';
+
+			if (window.MutationObserver) {
+				flyout.changeObserver = new window.MutationObserver(
+					function () {
+						flyout.displayFlyout()
+					}
+				);
+				// configuration of the observer:
+				var config = { subtree: true, childList: true, characterData: true };
+				flyout.changeObserver.observe(flyout.flyoutContainer, config)
 			}
 
+			flyout.flyoutContainer.innerHTML = flyout.flyoutTempalte;
+			var flyoutId = flyoutElem.getAttribute('id');
+			flyout.flyoutContainer.setAttribute('flyout-for', flyoutId);
 		}
-		if (!positionAgainstElem) {
-			positionAgainstElem = flyoutElem.parentElement;
-		}
 
-		return positionAgainstElem;
-	}
+		flyout.pendingRenderActions.animationFrame = window.requestAnimationFrame(function() {
 
-	attachedCallback () {
-		// Process element attributes
-		this.attributeChangedCallback('flyout-on',  null, this.getAttribute('flyout-on'));
-	}
-
-	detachedCallback () {
-		// Process element attributes
-		this.attributeChangedCallback('flyout-on',  this.getAttribute('flyout-on'), null);
-	}
-
-	attributeChangedCallback  (name, oldValue, newValue) {
-		if (name === 'flyout-on') {
-			if (newValue) {
-				this.bindFlyoutAction(newValue, oldValue);
-			}
-		}
-	}
-
-	isActive () {
-		if (this.flyoutAlignedToElem && this.flyoutContainer) {
-			return true;
-		};
-		return false;
-	}
-
-	bindFlyoutAction (newValue, oldValue) {
-		var flyoutElem = this.flyoutElem;
-
-		this.unbindEvents();
-		if (typeof newValue === 'string') {
-			newValue = newValue.split(' ');
-			if (newValue.indexOf('click') >= 0) {
-				flyoutElem.parentElement.addEventListener('click', this.EVENTS.clickEvent);
-			} else if (newValue.indexOf('hover') >= 0) {
-				flyoutElem.parentElement.addEventListener('mouseover', this.EVENTS.watchMouseOver);
-			}
-		}
-	};
-
-	unbindEvents () {
-		var flyoutElem = this.flyoutElem;
-
-		flyoutElem.parentElement.removeEventListener('click', this.EVENTS.clickEvent);
-		flyoutElem.parentElement.removeEventListener('mouseover', this.EVENTS.watchMouseOver);
-	}
-
-	clearTimers () {
-		if (this.pendingRenderActions) {
-			window.cancelAnimationFrame(this.pendingRenderActions.animationFrame);
-			window.clearTimeout(this.pendingRenderActions.timeout);
-		}
-		this.pendingRenderActions = {};
-	}
-
-	close () {
-		EventManager.removeActiveFlyout(this);
-		this.clearTimers();
-		this.flyoutContainer.parentElement.removeChild(this.flyoutContainer);
-		this.removeScrollEvents();
-		this.flyoutContainer = null;
-		this.flyoutAlignedToElem = null;
-	}
-
-	displayFlyout () {
-		var flyout = this;
-		var flyoutElem = this.flyoutElem;
-
-		this.clearTimers();
-		this.flyoutAlignedToElem = this.findParentToPositionAgainst();
-
-		this.pendingRenderActions.animationFrame = window.requestAnimationFrame(function() {
-			if (!this.flyoutContainer) {
-				this.flyoutContainer = document.createElement('div');
-				this.flyoutContainer.innerHTML = this.flyoutTempalte;
-
-				var iframeShim = document.createElement('iframe');
-				iframeShim.classList.add('shim');
-				iframeShim.style.position = 'absolute';
-				iframeShim.style.height = '100%';
-				iframeShim.style.width = '100%';
-				iframeShim.style.top = 0;
-				iframeShim.style.left = 0;
-				iframeShim.style.border = 'none';
-
-				EnzeyNet.Services.prepend(this.flyoutContainer, iframeShim);
-
-				window.document.body.appendChild(this.flyoutContainer);
-
-				this.flyoutContainer.style.position = 'fixed';
-				this.flyoutContainer.style.top = '0';
-				elemLeft = '0';
-				this.flyoutContainer.style.visibility = 'hidden';
-
-				this.flyoutContainer.getFlyoutOwner = function() {
-					return flyoutElem;
-				};
+			flyout.flyoutContainer.classList.remove('leave');
+			flyout.flyoutContainer.classList.remove('active');
+			if (flyout.flyoutContainer.parentElement !== window.document.body) {
+				window.document.body.appendChild(flyout.flyoutContainer);
+				flyout.flyoutContainer.classList.add('enter');
 			}
 
-			this.pendingRenderActions.timeout = setTimeout(function() {
+			flyout.pendingRenderActions.animationFrame = window.requestAnimationFrame(function() {
+				flyout.flyoutContainer.classList.add('enter');
+			});
+
+			flyout.pendingRenderActions.timeout = setTimeout(function() {
 				// Transverse DOM looking for element to position against.
-				var searchParentElem = this.flyoutAlignedToElem.parentElement;
+				var searchParentElem = flyout.flyoutAlignedToElem.parentElement;
 				while (searchParentElem) {
-					this.registerScrollEvent(searchParentElem);
+					flyout.EVENTS.registerScrollEvent(searchParentElem);
 					searchParentElem = searchParentElem.parentElement;
 				}
-				this.registerScrollEvent(document);
-				this.positionFlyout(this.flyoutAlignedToElem);
-				EventManager.addActiveFlyout(flyout);
-			}.bind(this), 0);
-		}.bind(this));
-
-	}
-
-	extractElemPostion (alignMyAttr, alignToAttr) {
-		var result = null;
-		if (alignMyAttr) {
-			if (alignToAttr) {
-				var alignMyArray = alignMyAttr.split(' ');
-				if (alignMyArray.length !== 2) {return;}
-
-				var myVerticalPredicate   = alignMyArray[0];
-				var myHorizontalPredicate = alignMyArray[1];
-
-				var alignToArray = alignToAttr.split(' ');
-				if (alignToArray.length !== 2) {return;}
-
-				var itsVerticalPredicate   = alignToArray[0];
-				var itsHorizontalPredicate = alignToArray[1];
-
-				result = {
-					horizontal: {
-						my: myHorizontalPredicate,
-						its: itsHorizontalPredicate
-					},
-					vertical: {
-						my: myVerticalPredicate,
-						its: itsVerticalPredicate
-					}
-				};
-			}
-		}
-
-		return result;
-	}
-
-	getLeftPos (hPos, flyoutContainerPos, flyoutAnchorElemPos) {
-		var elemLeft = 0;
-		if (hPos.my === 'center') {
-			if (hPos.its === 'center') {
-				elemLeft = (inputPos.left - boxPos.width) + 'px';
-			} else if (hPos.its === 'left') {
-				elemLeft = (inputPos.left - boxPos.width) + 'px';
-			} else if (hPos.its === 'right') {
-				elemLeft = (inputPos.left - boxPos.width) + 'px';
-			}
-		} else if (hPos.my === 'left') {
-			if (hPos.its === 'center') {
-				elemLeft = (flyoutAnchorElemPos.left) + 'px';
-			} else if (hPos.its === 'left') {
-				elemLeft = (flyoutAnchorElemPos.left) + 'px';
-			} else if (hPos.its === 'right') {
-				elemLeft = (flyoutAnchorElemPos.left + flyoutAnchorElemPos.width) + 'px';
-			}
-		} else if (hPos.my === 'right') {
-			if (hPos.its === 'center') {
-				elemLeft = (inputPos.left - boxPos.width) + 'px';
-			} else if (hPos.its === 'left') {
-				elemLeft = (flyoutAnchorElemPos.left - flyoutContainerPos.width) + 'px';
-			} else if (hPos.its === 'right') {
-				elemLeft = (flyoutAnchorElemPos.left - flyoutContainerPos.width + flyoutAnchorElemPos.width) + 'px';
-			}
-		}
-
-		return elemLeft;
-	}
-
-	getTopPos (vPos, flyoutContainerPos, flyoutAnchorElemPos) {
-		var elemTop = 0;
-		if (vPos.my === 'center') {
-			if (vPos.its === 'center') {
-				elemTop = (inputPos.left - boxPos.width) + 'px';
-			} else if (vPos.its === 'top') {
-				elemTop = (inputPos.left - boxPos.width) + 'px';
-			} else if (vPos.its === 'bottom') {
-				elemTop = (inputPos.left - boxPos.width) + 'px';
-			}
-		} else if (vPos.my === 'top') {
-			if (vPos.its === 'center') {
-				elemTop = (flyoutAnchorElemPos.left) + 'px';
-			} else if (vPos.its === 'top') {
-				elemTop = (flyoutAnchorElemPos.top) + 'px';
-			} else if (vPos.its === 'bottom') {
-				elemTop = (flyoutAnchorElemPos.top + flyoutAnchorElemPos.height) + 'px';
-			}
-		} else if (vPos.my === 'bottom') {
-			if (vPos.its === 'center') {
-				elemTop = (inputPos.left - boxPos.width) + 'px';
-			} else if (vPos.its === 'top') {
-				elemTop = (flyoutAnchorElemPos.top - flyoutContainerPos.height) + 'px';
-			} else if (vPos.its === 'bottom') {
-				elemTop = (flyoutAnchorElemPos.top - flyoutContainerPos.height + flyoutAnchorElemPos.height) + 'px';
-			}
-		}
-
-		return elemTop;
-	}
-
-	positionFlyout (alignToElement) {
-		var flyoutElem = this.flyoutElem;
-		var alignMyAttr = flyoutElem.getAttribute('align-my');
-		var alignToAttr = flyoutElem.getAttribute('align-to');
-
-		var positioning = extractElemPostion(alignMyAttr, alignToAttr);
-		if (positioning) {
-			var flyoutAnchorElemPos = Helpers.getBoxData(alignToElement);
-			var flyoutContainerPos = Helpers.getBoxData(this.flyoutContainer);
-
-			var elemLeft = getLeftPos(positioning.horizontal, flyoutContainerPos, flyoutAnchorElemPos);
-			var elemTop = getTopPos(positioning.vertical, flyoutContainerPos, flyoutAnchorElemPos);
-
-			this.pendingRenderActions.animationFrame = window.requestAnimationFrame(function() {
-				this.flyoutContainer.style.left = elemLeft;
-				this.flyoutContainer.style.top = elemTop;
-				this.flyoutContainer.style.visibility = 'visible';
-			}.bind(this));
-		}
-
-	}
-
-	findParentFlyout () {
-		var searchElem = this.flyoutElem.parentElement;
-		while (searchElem) {
-			if (searchElem.getFlyoutOwner) {
-				return searchElem.getFlyoutOwner();
-			}
-			searchElem = searchElem.parentElement;
-		}
+				flyout.EVENTS.registerScrollEvent(document);
+				flyout.pendingRenderActions.animationFrame = Positioner.position(
+					flyout.flyoutContainer,
+					flyout.flyoutAlignedToElem,
+					getFlyoutPredicate(flyout.flyoutElem)
+				);
+				EventManager.register(flyout);
+				flyout.isActiveBool = true;
+			}, 0);
+		});
 	}
 
 }

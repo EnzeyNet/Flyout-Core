@@ -1,0 +1,102 @@
+<html>
+	<head>
+		<style>
+			.shim {
+				z-index: -1;
+			}
+			html, body {
+				height: 1000px;
+				width: 2000px;
+			}
+			.test1 {
+				position: absolute;
+				top: 200px;
+				left: 300px;
+			}
+			.test2 {
+				position: absolute;
+				top: 200px;
+				left: 600px;
+			}
+			.testRadios {
+				position: absolute;
+				top: 300px;
+				left: 400px;
+			}
+			.radioWheelItem {
+				height: 4rem;
+				width: 4rem;
+				border-radius: 100%;
+			}
+			.flyoutCont {
+				min-width: 30px;
+				height: 40px;
+				background-color: lightblue;
+			}
+			.flyoutCont2 {
+				min-width: 50px;
+				height: 30px;
+				background-color: lightgreen;
+			}
+			.flyoutCont3 {
+				min-width: 50px;
+				height: 60px;
+				background-color: cyan;
+			}
+			.leave {
+				opacity: 1;
+				transition: 0.5s opacity;
+			}
+			.leave.active {
+				opacity: 0;
+			}
+		</style>
+		<script src="Services.min.js"></script>
+		<script src="../dist/Flyout-WebComponent.allDeps.js"></script>
+	</head>
+	<body>
+		<div class="test1">
+			<button>
+				<span>TEST!</span>
+				<fly-out flyout-on="hover" align-my="top left" align-to="bottom left">
+					<div class="flyoutCont">
+					</div>
+				</fly-out>
+			</button>
+		</div>
+		<div class="test2">
+			<button>
+				<span>TEST 2!</span>
+				<fly-out flyout-on="hover" align-my="top right" align-to="bottom right">
+					<div class="flyoutCont">
+						<fly-out flyout-on="hover" align-my="top left" align-to="bottom left">
+							<div class="flyoutCont2">
+								<fly-out flyout-on="hover" align-my="top left" align-to="bottom right">
+									<div class="flyoutCont3">
+									</div>
+								</fly-out>
+							</div>
+						</fly-out>
+					</div>
+				</fly-out>
+			</button>
+		</div>
+		<div class="testRadios">
+			<button>
+				<span>Wheel Radio!</span>
+				<fly-out flyout-on="hover" align-my="top center" align-to="bottom center">
+					<div class="radioWheelItem" style="background-color: black;">
+						<fly-out flyout-on="hover" align-my="top right" align-to="bottom left">
+							<div class="radioWheelItem" style="background-color: red;">
+							</div>
+						</fly-out>
+						<fly-out flyout-on="hover" align-my="top left" align-to="bottom right">
+							<div class="radioWheelItem" style="background-color: blue;">
+							</div>
+						</fly-out>
+					</div>
+				</fly-out>
+			</button>
+		</div>
+	</body>
+</html>
